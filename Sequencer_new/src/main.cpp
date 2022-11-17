@@ -15,6 +15,8 @@ byte pickPointer = 0;
 byte pickPointer_old = 0;
 byte sequencePointer = 0;
 boolean patternMode = false;
+byte mode32_counter = 0;
+boolean mode32 = false;
 
 unsigned int pickSequence = patterns[4];
 unsigned int randomSequence;
@@ -212,6 +214,7 @@ void updateControls(){
   }
 
   // TODO: Switch- 16 to 32 mode (combine seq 1 and 2)
+  // mode32 = false;
 }
 
 void buildMatrix(){
@@ -348,13 +351,27 @@ ISR(TIMER1_OVF_vect){
     flagInterrupt = true;
 
     playPointer = (playPointer+1) % sequenceLength;
+    if(playPointer == 0){
+      mode32_counter = (mode32_counter+1) % 2;
+    }
     
     // trigger clk and signal if in sequence
     digitalWrite(PIN_CLK_OUT, HIGH);
     if(sequence0 & (32768>>playPointer)){digitalWrite(PIN_OUT1, HIGH);}
-    // TODO: 32Mode
-    if(sequence1 & (32768>>playPointer)){digitalWrite(PIN_OUT2, HIGH);}
-    if(sequence2 & (32768>>playPointer)){digitalWrite(PIN_OUT3, HIGH);}
+
+    // in mode32 play seq1 and seq2 on both outputs
+    if(mode32){
+      if(mode32_counter == 0){
+        if(sequence1 & (32768>>playPointer)){digitalWrite(PIN_OUT2, HIGH);}
+        if(sequence1 & (32768>>playPointer)){digitalWrite(PIN_OUT3, HIGH);}
+      } else {
+        if(sequence2 & (32768>>playPointer)){digitalWrite(PIN_OUT2, HIGH);}
+        if(sequence2 & (32768>>playPointer)){digitalWrite(PIN_OUT3, HIGH);}
+      }
+    } else {
+      if(sequence1 & (32768>>playPointer)){digitalWrite(PIN_OUT2, HIGH);}
+      if(sequence2 & (32768>>playPointer)){digitalWrite(PIN_OUT3, HIGH);}
+    }
   } else {
       flagInterrupt = false;
       TCNT1 = countsToInterrupt + countsToRelease;

@@ -12,6 +12,8 @@ unsigned int seqLengthAVG[AVG_LENGTH];
 byte seqLengthAVG_pointer = 0;
 byte playPointer = 15;
 byte pickPointer = 0;
+unsigned int pickPointerAVG[AVG_LENGTH];  // TODO: evtl. /2 üfr besseres Feedback
+byte pickPointerAVG_pointer = 0;
 byte pickPointer_old = 0;
 byte sequencePointer = 0;
 boolean patternMode = false;
@@ -138,9 +140,8 @@ void update_BPM_CLK(){
 void updatePick(){
 
     if(patternMode){ // pick pattern
-      //int arraysize = sizeof(patterns);
+      
       int value = map(analogRead(PIN_PICK), 0, 1023, 0, sizeof(patterns)/2);
-      // TODO auch Wert glätten
       
       if(value == sizeof(patterns)/2){
         pickSequence = randomSequence;
@@ -149,7 +150,10 @@ void updatePick(){
       }
      
     } else { // pick dot
-      int value = map(analogRead(PIN_PICK), 0, 1023, 0, 47);
+      pickPointerAVG[pickPointerAVG_pointer] = (unsigned int) map(analogRead(PIN_PICK), 0, 1023, 0, 47);
+      pickPointerAVG_pointer = ++pickPointerAVG_pointer % AVG_LENGTH;
+      int value = avg(pickPointerAVG);
+
       pickPointer = value % 16;
       sequencePointer = value / 16;
         // counter for animation
@@ -238,9 +242,14 @@ void animateMatrix(){
   // TODO: animate settings (if-else oder zwischenpunkte)
 
   // animate sequence
-  matrix[playPointer / 8]     ^= (128*sequenceBlinker) >> (playPointer % 8);
-  matrix[playPointer / 8 + 3] ^= (128*sequenceBlinker) >> (playPointer % 8);
-  matrix[playPointer / 8 + 6] ^= (128*sequenceBlinker) >> (playPointer % 8);
+  matrix[playPointer / 8] ^= (128*sequenceBlinker) >> (playPointer % 8);
+  if(mode32){
+    if(mode32_counter == 0){
+      matrix[playPointer / 8 + 3] ^= (128*sequenceBlinker) >> (playPointer % 8);
+    } else {
+      matrix[playPointer / 8 + 6] ^= (128*sequenceBlinker) >> (playPointer % 8);
+    }
+  }
   sequenceBlinker ^= 1;
 
   // aminate pattern pick
@@ -291,9 +300,10 @@ void setup() {
   }
 
   for(int i=0; i<AVG_LENGTH; i++){
-    bpmAVG[i] = map(analogRead(PIN_BPM_POTI), 0, 1023, MIN_BPM, MAX_BPM);
-    dividerAVG[i] = map(analogRead(PIN_DIVIDER), 0, 1023, 1, 8);
-    seqLengthAVG[i] = map(analogRead(PIN_SEQUENCE_LENGTH), 0, 1023, 1, 16);
+    bpmAVG[i] = (unsigned int) map(analogRead(PIN_BPM_POTI), 0, 1023, MIN_BPM, MAX_BPM);
+    dividerAVG[i] = (unsigned int) map(analogRead(PIN_DIVIDER), 0, 1023, 1, 8);
+    seqLengthAVG[i] = (unsigned int) map(analogRead(PIN_SEQUENCE_LENGTH), 0, 1023, 1, 16);
+    pickPointerAVG[i] = (unsigned int) map(analogRead(PIN_PICK), 0, 1023, 0, 47);
   }
 
   // setup LCD-Matrix

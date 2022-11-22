@@ -20,7 +20,7 @@
 #define PIN_PATTERN 3       // Button - Pullup
 #define PIN_TIMER_MODE 4    // Switch
 #define PIN_PICK_DOT 11     // Button - Pullup
-#define PIN_RESET 12        // Button & Bus
+#define PIN_SYNC 12        // Button & Bus
 #define PIN_RESET_CLK 13    // Button - Pullup
 
 // Values

@@ -28,7 +28,7 @@ unsigned int sequence1 = patterns[1];
 unsigned int sequence2 = patterns[0];
 
 // buttons
-#define RESET 0
+#define SYNC 0
 #define PATTERN_MODE 1
 #define PICK_DOT 2
 #define CLK_IN 3
@@ -192,7 +192,7 @@ void updateControls(){
   if(b[PICK_DOT].fell()){
     setDot();
   }
-  if(b[RESET].read() == HIGH){
+  if(b[SYNC].read() == HIGH){
     if(clk_state == 4){
       clk_state = 3;
     }
@@ -217,8 +217,7 @@ void updateControls(){
     generateRandomPattern();
   }
 
-  // TODO: Switch- 16 to 32 mode (combine seq 1 and 2)
-  // mode32 = false;
+  mode32 = digitalRead(PIN_32MODE);
 }
 
 void buildMatrix(){
@@ -291,7 +290,7 @@ void setup() {
 
   b[RESET_CLK].attach(PIN_RESET_CLK, INPUT_PULLUP);
   b[CLK_IN].attach(PIN_CLK_IN, INPUT);
-  b[RESET].attach(PIN_RESET, INPUT);
+  b[SYNC].attach(PIN_SYNC, INPUT);
   b[PATTERN_MODE].attach(PIN_PATTERN, INPUT_PULLUP);
   b[PICK_DOT].attach(PIN_PICK_DOT, INPUT_PULLUP);
   for(int i=0; i<NUM_OF_BUTTONS; i++){

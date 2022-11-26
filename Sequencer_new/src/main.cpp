@@ -286,7 +286,7 @@ void setup() {
   pinMode(PIN_LED_CLK, OUTPUT);
   pinMode(PIN_LED_CS, OUTPUT);
   pinMode(PIN_CLK_OUT, OUTPUT);
-  pinMode(PIN_32MODE, INPUT); //TODO: Pullup?
+  pinMode(PIN_32MODE, INPUT_PULLUP);
 
   b[RESET_CLK].attach(PIN_RESET_CLK, INPUT_PULLUP);
   b[CLK_IN].attach(PIN_CLK_IN, INPUT);

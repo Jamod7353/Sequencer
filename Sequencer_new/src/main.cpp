@@ -25,7 +25,7 @@ unsigned int randomSequence;
 
 unsigned int sequence0 = patterns[2];
 unsigned int sequence1 = patterns[1];
-unsigned int sequence2 = patterns[0];
+unsigned int sequence2 = patterns[3];
 
 // buttons
 #define SYNC 0
@@ -295,7 +295,6 @@ void setup() {
   b[PICK_DOT].attach(PIN_PICK_DOT, INPUT_PULLUP);
   for(int i=0; i<NUM_OF_BUTTONS; i++){
     b[i].interval(25);
-    Serial.println(i);
   }
 
   for(int i=0; i<AVG_LENGTH; i++){
@@ -344,13 +343,8 @@ void loop() {
   animateMatrix();
   printMatrix();
 
-  Serial.print(bpm);
-  Serial.print(" :bpm - length: ");
-  Serial.print(sequenceLength);
-  Serial.print(" - divider: ");
-  Serial.println(divider);
-
   delay(10);
+
 }
 
 // Timer-interrupt method

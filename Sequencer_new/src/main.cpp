@@ -192,7 +192,7 @@ void updateControls(){
   if(b[PICK_DOT].fell()){
     setDot();
   }
-  if(b[SYNC].read() == HIGH){
+  if(b[SYNC].read() == LOW){
     if(clk_state == 4){
       clk_state = 3;
     }
@@ -221,14 +221,15 @@ void updateControls(){
 }
 
 void buildMatrix(){
-  matrix[0] = (byte) (sequence0 >> 8);
-  matrix[1] = (byte) sequence0;
-  matrix[2] = 0;
-  matrix[3] = (byte) (sequence1 >> 8);
-  matrix[4] = (byte) sequence1;
+
+  matrix[7] = (byte) (sequence0 >> 8);
+  matrix[6] = (byte) sequence0;
   matrix[5] = 0;
-  matrix[6] = (byte) (sequence2 >> 8);
-  matrix[7] = (byte) sequence2;
+  matrix[4] = (byte) (sequence1 >> 8);
+  matrix[3] = (byte) sequence1;
+  matrix[2] = 0;
+  matrix[1] = (byte) (sequence2 >> 8);
+  matrix[0] = (byte) sequence2;
 }
 
 void printMatrix(){
@@ -241,20 +242,23 @@ void animateMatrix(){
   // TODO: animate settings (if-else oder zwischenpunkte)
 
   // animate sequence
-  matrix[playPointer / 8] ^= (128*sequenceBlinker) >> (playPointer % 8);
+  matrix[7-(playPointer / 8)] ^= (128*sequenceBlinker) >> (playPointer % 8);
   if(mode32){
     if(mode32_counter == 0){
-      matrix[playPointer / 8 + 3] ^= (128*sequenceBlinker) >> (playPointer % 8);
+      matrix[7-(playPointer / 8 + 3)] ^= (128*sequenceBlinker) >> (playPointer % 8);
     } else {
-      matrix[playPointer / 8 + 6] ^= (128*sequenceBlinker) >> (playPointer % 8);
+      matrix[7-(playPointer / 8 + 6)] ^= (128*sequenceBlinker) >> (playPointer % 8);
     }
+  } else {
+    matrix[7-(playPointer / 8 + 3)] ^= (128*sequenceBlinker) >> (playPointer % 8);
+    matrix[7-(playPointer / 8 + 6)] ^= (128*sequenceBlinker) >> (playPointer % 8);
   }
   sequenceBlinker ^= 1;
 
   // aminate pattern pick
   if(patternMode){
-    matrix[3*sequencePointer]   = (byte) (pickSequence >> 8);
-    matrix[3*sequencePointer+1] = (byte) pickSequence;
+    matrix[7-3*sequencePointer]   = (byte) (pickSequence >> 8);
+    matrix[7-(3*sequencePointer+1)] = (byte) pickSequence;
 
     pickCounter = 0; //reset animation
   }
@@ -262,7 +266,7 @@ void animateMatrix(){
   else {
     if(pickBlinker2){
       if(pickCounter++ < PICK_COUNTER_NUM){
-        matrix[pickPointer/8 + sequencePointer*3] ^= (pickBlinker*128)>>(pickPointer%8);
+        matrix[7-(pickPointer/8 + sequencePointer*3)] ^= (pickBlinker*128)>>(pickPointer%8);
         pickBlinker ^= 1;
         pickBlinker2 = 0;
       }
@@ -278,7 +282,7 @@ void setup() {
   Serial.println("Start...let's go!");
 
   // setup digital pins
-  pinMode(PIN_TIMER_MODE, INPUT);
+  pinMode(PIN_TIMER_MODE, INPUT_PULLUP);
   pinMode(PIN_OUT1, OUTPUT);
   pinMode(PIN_OUT2, OUTPUT);
   pinMode(PIN_OUT3, OUTPUT);
@@ -290,7 +294,7 @@ void setup() {
 
   b[RESET_CLK].attach(PIN_RESET_CLK, INPUT_PULLUP);
   b[CLK_IN].attach(PIN_CLK_IN, INPUT);
-  b[SYNC].attach(PIN_SYNC, INPUT);
+  b[SYNC].attach(PIN_SYNC, INPUT_PULLUP);
   b[PATTERN_MODE].attach(PIN_PATTERN, INPUT_PULLUP);
   b[PICK_DOT].attach(PIN_PICK_DOT, INPUT_PULLUP);
   for(int i=0; i<NUM_OF_BUTTONS; i++){
@@ -331,7 +335,7 @@ void setup() {
 }
 
 void loop() {
-  timer_mode = digitalRead(PIN_TIMER_MODE);
+  timer_mode = digitalRead(PIN_TIMER_MODE)^1;
   if(timer_mode == POTI_MODE){
     updateBPM_poti();
   } // bpm in CLK_Mode is set at interrupts

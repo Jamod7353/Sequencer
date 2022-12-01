@@ -18,9 +18,9 @@
 #define PIN_32MODE A4        // Switch - Pullup
 #define PIN_CLK_IN 2        // Jack - Widerstand 100k->GND
 #define PIN_PATTERN 3       // Button - Pullup
-#define PIN_TIMER_MODE 4    // Switch
+#define PIN_TIMER_MODE 4    // Switch - Pullup
 #define PIN_PICK_DOT 11     // Button - Pullup
-#define PIN_SYNC 12        // Button & Bus
+#define PIN_SYNC 12        // Button - Pullup
 #define PIN_RESET_CLK A2    // Button - Pullup
 
 // Values

@@ -12,7 +12,7 @@ unsigned int seqLengthAVG[AVG_LENGTH];
 byte seqLengthAVG_pointer = 0;
 byte playPointer = 15;
 byte pickPointer = 0;
-unsigned int pickPointerAVG[AVG_LENGTH];  // TODO: evtl. /2 üfr besseres Feedback
+unsigned int pickPointerAVG[AVG_LENGTH];
 byte pickPointerAVG_pointer = 0;
 byte pickPointer_old = 0;
 byte sequencePointer = 0;
@@ -99,12 +99,12 @@ void updateBPM_poti(){
   bpmAVG[bpmAVG_pointer] = (unsigned int) map(analogRead(PIN_BPM_POTI), 0, 1023, MIN_BPM, MAX_BPM);
   bpmAVG_pointer = ++bpmAVG_pointer % AVG_LENGTH;
   unsigned int bpmRedAVG = avg(bpmAVG);
-  if((bpm>bpmRedAVG && bpm-bpmRedAVG > 3) || (bpm<bpmRedAVG && bpmRedAVG-bpm > 3)){
+  if((bpm>bpmRedAVG && bpm-bpmRedAVG > 2) || (bpm<bpmRedAVG && bpmRedAVG-bpm > 2)){
   //if(abs(bpm - avg(bpmAVG)) > 3){
     infoTime = millis() + ANIMATUIN_TIME;
     flagInfo = BPM_ANIMATION;
   }
-  bpm = avg(bpmAVG);
+  bpm = bpmRedAVG;
 
   if(abs(bpm_old-bpm)>1){
     // Timer-interrupt in ms: 65535-(16*10^6*60/bpm/256)
@@ -164,7 +164,6 @@ void updatePick(){
       pickPointerAVG[pickPointerAVG_pointer] = (unsigned int) map(analogRead(PIN_PICK), 0, 1023, 0, 47);
       pickPointerAVG_pointer = ++pickPointerAVG_pointer % AVG_LENGTH;
       int value = avg(pickPointerAVG);
-
       pickPointer = value % 16;
       sequencePointer = value / 16;
         // counter for animation
@@ -213,24 +212,24 @@ void updateControls(){
   }
   seqLengthAVG[seqLengthAVG_pointer] = (unsigned int) map(analogRead(PIN_SEQUENCE_LENGTH), 0, 1023, 1, 16);
   seqLengthAVG_pointer = ++seqLengthAVG_pointer % AVG_LENGTH;
-  if(sequenceLength != avg(seqLengthAVG)){
-//if(abs(sequenceLength - avg(seqLengthAVG)) > 1){
-  // TODO abs funktioniert nicht!
+  byte tmp_seqLen = (byte) avg(seqLengthAVG);
+  if(sequenceLength != tmp_seqLen){
     infoTime = millis() + ANIMATUIN_TIME;
     flagInfo = SEQ_LENGTH_ANIMATION;
   }
-  sequenceLength = avg(seqLengthAVG);
+  sequenceLength = tmp_seqLen;
 
   dividerAVG[dividerAVG_pointer] = (unsigned int) map(analogRead(PIN_DIVIDER), 0, 1023, 1, 8);
   dividerAVG_pointer = ++dividerAVG_pointer % AVG_LENGTH;
-  if(divider != avg(dividerAVG)){
-  //if(abs(divider - avg(dividerAVG)) > 1){
+  byte tmp_divider = (byte) avg(dividerAVG); 
+  if(divider != tmp_divider){
     infoTime = millis() + ANIMATUIN_TIME;
     flagInfo = DIVIDER_ANIMATION;
   }  
-  divider = avg(dividerAVG);
+  divider = tmp_divider;
 
   patternMode = b[PATTERN_MODE].read() == LOW;
+
   if(b[PATTERN_MODE].fell()){
     generateRandomPattern();
   }
@@ -239,14 +238,155 @@ void updateControls(){
 }
 
 void buildMatrix(){
-  matrix[7] = (byte) (sequence0 >> 8);
-  matrix[6] = (byte) sequence0;
-  matrix[5] = 0;
-  matrix[4] = (byte) (sequence1 >> 8);
-  matrix[3] = (byte) sequence1;
-  matrix[2] = 0;
-  matrix[1] = (byte) (sequence2 >> 8);
-  matrix[0] = (byte) sequence2;
+  if(flagInfo == NORMAL_ANIMATION){
+    matrix[7] = (byte) (sequence0 >> 8);
+    matrix[6] = (byte) sequence0;
+    matrix[5] = 0;
+    matrix[4] = (byte) (sequence1 >> 8);
+    matrix[3] = (byte) sequence1;
+    matrix[2] = 0;
+    matrix[1] = (byte) (sequence2 >> 8);
+    matrix[0] = (byte) sequence2;
+
+  } else {
+    unsigned int number;
+    if(flagInfo == BPM_ANIMATION){
+      number = bpm;
+    } else if(flagInfo == DIVIDER_ANIMATION){
+      number = divider;
+    } else if(flagInfo == SEQ_LENGTH_ANIMATION){
+      number = sequenceLength;
+    }
+    for(int i=0; i<8; i++){
+      matrix[i] = 0;
+    }
+    unsigned int hundreds = number / 100;
+    switch (hundreds) {
+      case 6:
+        matrix[2] = 128;
+      case 5:
+        matrix[3] = 128;
+      case 4:
+        matrix[4] = 128;
+      case 3:
+        matrix[5] = 128;
+      case 2:
+        matrix[6] = 128;
+      case 1:
+        matrix[7] = 128;
+        break;
+      default:
+        matrix[7] = 0;
+        break;
+    }
+    unsigned int tens = (number % 100) / 10; 
+
+    switch (tens) {
+      case 0:
+        matrix[6] = 32+16+8+4+2 | matrix[6];
+        matrix[5] = 32+2 | matrix[5];
+        matrix[4] = 32+16+8+4+2 | matrix[4];
+        break;
+      case 1:
+        matrix[6] = 8 | matrix[6];
+        matrix[5] = 16 | matrix[4];
+        matrix[4] = 32+16+8+4+2 | matrix[4];
+        break;
+      case 2:
+        matrix[6] = 32+8+4+2 | matrix[6];
+        matrix[5] = 32+8+2 | matrix[5];
+        matrix[4] = 32+16+8+2 | matrix[4];
+        break;
+      case 3:
+        matrix[6] = 32+8+2 | matrix[6];
+        matrix[5] = 32+8+2 | matrix[5];
+        matrix[4] = 32+16+8+4+2 | matrix[4];
+        break;
+      case 4:
+        matrix[6] = 32+16+8 | matrix[6];
+        matrix[5] = 8 | matrix[5];
+        matrix[4] = 32+16+8+4+2 | matrix[4];
+        break;
+      case 5:
+        matrix[6] = 32+16+8+2 | matrix[6];
+        matrix[5] = 32+8+2 | matrix[5];
+        matrix[4] = 32+8+4+2 | matrix[4];
+        break;
+      case 6:
+        matrix[6] = 32+16+8+4+2 | matrix[6];
+        matrix[5] = 32+8+2 | matrix[5];
+        matrix[4] = 32+8+4+2 | matrix[4];
+        break;
+      case 7:
+        matrix[6] = 32 | matrix[6];
+        matrix[5] = 32 | matrix[4];
+        matrix[4] = 32+16+8+4+2 | matrix[4];
+      case 8:
+        matrix[6] = 32+16+8+4+2 | matrix[6];
+        matrix[5] = 32+8+2 | matrix[5];
+        matrix[4] = 32+16+8+4+2 | matrix[4];
+      case 9:
+        matrix[6] = 32+16+8+2 | matrix[6];
+        matrix[5] = 32+8+2 | matrix[5];
+        matrix[4] = 32+16+8+4+2 | matrix[4];
+      default:
+        break;
+    }
+
+    unsigned int num = (number % 10); 
+
+    switch (num) {
+      case 0:
+        matrix[2] = 32+16+8+4+2 | matrix[2];
+        matrix[1] = 32+2 | matrix[1];
+        matrix[0] = 32+16+8+4+2 | matrix[0];
+        break;
+      case 1:
+        matrix[2] = 8 | matrix[2];
+        matrix[1] = 16 | matrix[1];
+        matrix[0] = 32+16+8+4+2 | matrix[0];
+        break;
+      case 2:
+        matrix[2] = 32+8+4+2 | matrix[2];
+        matrix[1] = 32+8+2 | matrix[1];
+        matrix[0] = 32+16+8+2 | matrix[0];
+        break;
+      case 3:
+        matrix[2] = 32+8+2 | matrix[2];
+        matrix[1] = 32+8+2 | matrix[1];
+        matrix[0] = 32+16+8+4+2 | matrix[0];
+        break;
+      case 4:
+        matrix[2] = 32+16+8 | matrix[2];
+        matrix[1] = 8 | matrix[1];
+        matrix[0] = 32+16+8+4+2 | matrix[0];
+        break;
+      case 5:
+        matrix[2] = 32+16+8+2 | matrix[2];
+        matrix[1] = 32+8+2 | matrix[1];
+        matrix[0] = 32+8+4+2 | matrix[0];
+        break;
+      case 6:
+        matrix[2] = 32+16+8+4+2 | matrix[2];
+        matrix[1] = 32+8+2 | matrix[1];
+        matrix[0] = 32+8+4+2 | matrix[0];
+        break;
+      case 7:
+        matrix[2] = 32 | matrix[2];
+        matrix[1] = 32 | matrix[1];
+        matrix[0] = 32+16+8+4+2 | matrix[0];
+      case 8:
+        matrix[2] = 32+16+8+4+2 | matrix[2];
+        matrix[1] = 32+8+2 | matrix[1];
+        matrix[0] = 32+16+8+4+2 | matrix[0];
+      case 9:
+        matrix[2] = 32+16+8+2 | matrix[2];
+        matrix[1] = 32+8+2 | matrix[1];
+        matrix[0] = 32+16+8+4+2 | matrix[0];
+      default:
+        break;
+    }
+  }
 }
 
 void printMatrix(){
@@ -290,18 +430,9 @@ void animateMatrix(){
         pickBlinker2 = 1;
       }
     }
-    return;
-  } else if(flagInfo == BPM_ANIMATION){
-    //TODO: Animation for numbers
-  } else if(flagInfo == DIVIDER_ANIMATION){
-
-  } else if(flagInfo == SEQ_LENGTH_ANIMATION){
-    
-  }
-  if(infoTime < millis()){
+  } else if(infoTime < millis()){
     flagInfo = NORMAL_ANIMATION;
   }
-  Serial.println(flagInfo);
 }
 
 

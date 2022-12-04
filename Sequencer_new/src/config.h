@@ -27,7 +27,7 @@
 int MIN_BPM = 58;
 int MAX_BPM = 570;
 int MS_TO_RELEASE = 3;
-#define ANIMATUIN_TIME 2000
+#define ANIMATUIN_TIME 1000
 
 
 

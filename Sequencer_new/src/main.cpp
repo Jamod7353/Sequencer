@@ -49,6 +49,12 @@ byte animationCounter = 0;
 byte ANIMATION_NUM = 3;
 byte pickCounter = 0;
 byte PICK_COUNTER_NUM = 50;
+#define NORMAL_ANIMATION 0
+#define BPM_ANIMATION 1
+#define SEQ_LENGTH_ANIMATION 2
+#define DIVIDER_ANIMATION 3
+byte flagInfo = 0;
+unsigned long infoTime;
 
 // clock mode
 #define POTI_MODE 0
@@ -92,6 +98,12 @@ unsigned int avg(unsigned int array[]){
 void updateBPM_poti(){
   bpmAVG[bpmAVG_pointer] = (unsigned int) map(analogRead(PIN_BPM_POTI), 0, 1023, MIN_BPM, MAX_BPM);
   bpmAVG_pointer = ++bpmAVG_pointer % AVG_LENGTH;
+  unsigned int bpmRedAVG = avg(bpmAVG);
+  if((bpm>bpmRedAVG && bpm-bpmRedAVG > 3) || (bpm<bpmRedAVG && bpmRedAVG-bpm > 3)){
+  //if(abs(bpm - avg(bpmAVG)) > 3){
+    infoTime = millis() + ANIMATUIN_TIME;
+    flagInfo = BPM_ANIMATION;
+  }
   bpm = avg(bpmAVG);
 
   if(abs(bpm_old-bpm)>1){
@@ -138,7 +150,6 @@ void update_BPM_CLK(){
 }
 
 void updatePick(){
-
     if(patternMode){ // pick pattern
       
       int value = map(analogRead(PIN_PICK), 0, 1023, 0, sizeof(patterns)/2);
@@ -200,17 +211,24 @@ void updateControls(){
   if(b[RESET_CLK].fell()){
     clk_state = 0;
   }
-  //sequenceLength = map(analogRead(PIN_SEQUENCE_LENGTH), 0, 1023, 1, 16);
   seqLengthAVG[seqLengthAVG_pointer] = (unsigned int) map(analogRead(PIN_SEQUENCE_LENGTH), 0, 1023, 1, 16);
   seqLengthAVG_pointer = ++seqLengthAVG_pointer % AVG_LENGTH;
+  if(sequenceLength != avg(seqLengthAVG)){
+//if(abs(sequenceLength - avg(seqLengthAVG)) > 1){
+  // TODO abs funktioniert nicht!
+    infoTime = millis() + ANIMATUIN_TIME;
+    flagInfo = SEQ_LENGTH_ANIMATION;
+  }
   sequenceLength = avg(seqLengthAVG);
-  // TODO: flag (alter/neuer Wert) -> Anzeigen (Zwischenpunkte) oder Matrix + timer(millis) setzen
 
-  //divider = map(analogRead(PIN_DIVIDER), 0, 1023, 1, 8);
   dividerAVG[dividerAVG_pointer] = (unsigned int) map(analogRead(PIN_DIVIDER), 0, 1023, 1, 8);
   dividerAVG_pointer = ++dividerAVG_pointer % AVG_LENGTH;
+  if(divider != avg(dividerAVG)){
+  //if(abs(divider - avg(dividerAVG)) > 1){
+    infoTime = millis() + ANIMATUIN_TIME;
+    flagInfo = DIVIDER_ANIMATION;
+  }  
   divider = avg(dividerAVG);
-  // TODO: flag (alter/neuer Wert) -> Anzeigen (Zwischenpunkte) oder Matrix
 
   patternMode = b[PATTERN_MODE].read() == LOW;
   if(b[PATTERN_MODE].fell()){
@@ -221,7 +239,6 @@ void updateControls(){
 }
 
 void buildMatrix(){
-
   matrix[7] = (byte) (sequence0 >> 8);
   matrix[6] = (byte) sequence0;
   matrix[5] = 0;
@@ -239,41 +256,52 @@ void printMatrix(){
 }
 
 void animateMatrix(){
-  // TODO: animate settings (if-else oder zwischenpunkte)
-
-  // animate sequence
-  matrix[7-(playPointer / 8)] ^= (128*sequenceBlinker) >> (playPointer % 8);
-  if(mode32){
-    if(mode32_counter == 0){
-      matrix[7-(playPointer / 8 + 3)] ^= (128*sequenceBlinker) >> (playPointer % 8);
-    } else {
-      matrix[7-(playPointer / 8 + 6)] ^= (128*sequenceBlinker) >> (playPointer % 8);
-    }
-  } else {
-    matrix[7-(playPointer / 8 + 3)] ^= (128*sequenceBlinker) >> (playPointer % 8);
-    matrix[7-(playPointer / 8 + 6)] ^= (128*sequenceBlinker) >> (playPointer % 8);
-  }
-  sequenceBlinker ^= 1;
-
-  // aminate pattern pick
-  if(patternMode){
-    matrix[7-3*sequencePointer]   = (byte) (pickSequence >> 8);
-    matrix[7-(3*sequencePointer+1)] = (byte) pickSequence;
-
-    pickCounter = 0; //reset animation
-  }
-  // animate dot pick
-  else {
-    if(pickBlinker2){
-      if(pickCounter++ < PICK_COUNTER_NUM){
-        matrix[7-(pickPointer/8 + sequencePointer*3)] ^= (pickBlinker*128)>>(pickPointer%8);
-        pickBlinker ^= 1;
-        pickBlinker2 = 0;
+  if(flagInfo == NORMAL_ANIMATION){
+    // animate sequence
+    matrix[7-(playPointer / 8)] ^= (128*sequenceBlinker) >> (playPointer % 8);
+    if(mode32){
+      if(mode32_counter == 0){
+        matrix[7-(playPointer / 8 + 3)] ^= (128*sequenceBlinker) >> (playPointer % 8);
+      } else {
+        matrix[7-(playPointer / 8 + 6)] ^= (128*sequenceBlinker) >> (playPointer % 8);
       }
     } else {
-      pickBlinker2 = 1;
+      matrix[7-(playPointer / 8 + 3)] ^= (128*sequenceBlinker) >> (playPointer % 8);
+      matrix[7-(playPointer / 8 + 6)] ^= (128*sequenceBlinker) >> (playPointer % 8);
     }
+    sequenceBlinker ^= 1;
+
+    // aminate pattern pick
+    if(patternMode){
+      matrix[7-3*sequencePointer]   = (byte) (pickSequence >> 8);
+      matrix[7-(3*sequencePointer+1)] = (byte) pickSequence;
+
+      pickCounter = 0; //reset animation
+    }
+    // animate dot pick
+    else {
+      if(pickBlinker2){
+        if(pickCounter++ < PICK_COUNTER_NUM){
+          matrix[7-(pickPointer/8 + sequencePointer*3)] ^= (pickBlinker*128)>>(pickPointer%8);
+          pickBlinker ^= 1;
+          pickBlinker2 = 0;
+        }
+      } else {
+        pickBlinker2 = 1;
+      }
+    }
+    return;
+  } else if(flagInfo == BPM_ANIMATION){
+    //TODO: Animation for numbers
+  } else if(flagInfo == DIVIDER_ANIMATION){
+
+  } else if(flagInfo == SEQ_LENGTH_ANIMATION){
+    
   }
+  if(infoTime < millis()){
+    flagInfo = NORMAL_ANIMATION;
+  }
+  Serial.println(flagInfo);
 }
 
 
@@ -347,7 +375,7 @@ void loop() {
   animateMatrix();
   printMatrix();
 
-  delay(10);
+  delay(20);
 
 }
 

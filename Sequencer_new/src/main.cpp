@@ -155,7 +155,7 @@ void update_BPM_CLK(){
 void trigger(){
   TCNT1 = diffToRelease;
   flagInterrupt = true;
-  if(timer_mode == CLK_MODE && !clk_blocked){
+  if(timer_mode == POTI_MODE || !clk_blocked){
       playPointer = (playPointer+1) % sequenceLength;
   if(playPointer == 0){
     mode32_counter = (mode32_counter+1) % 2;
@@ -192,6 +192,7 @@ void update_BPM_CLK(){
         clk_blocked = true;
       } else if(divider < 6){
         // TODO implementieren
+        // eventuell bei divider == 1 implementieren (mit Modulo divider)
         // divide speed
         // counter setzen und nur auf count spielen
       } else { // divider >= 6
@@ -277,7 +278,7 @@ void updateControls(){
     infoTime = millis() + ANIMATUIN_TIME;
     flagInfo = DIVIDER_ANIMATION;
   }  
-  divider = tmp_divider;
+  divider = (byte) tmp_divider;
 
   patternMode = b[PATTERN_MODE].read() == LOW;
 
@@ -301,7 +302,7 @@ void buildMatrix(){
 
   } else {
     unsigned int number;
-    unsigned int divider_sign = 0;
+    byte divider_sign = 0;
     if(flagInfo == BPM_ANIMATION){
       number = bpm;
     } else if(flagInfo == DIVIDER_ANIMATION){
@@ -542,7 +543,7 @@ void setup() {
 
   Serial.println("Matrix setup done");
 
-  timer_mode = digitalRead(PIN_TIMER_MODE);
+  timer_mode = digitalRead(PIN_TIMER_MODE)^1;
 
   // set interrupt for clk
   attachInterrupt(digitalPinToInterrupt(PIN_CLK_IN), update_BPM_CLK, CHANGE);

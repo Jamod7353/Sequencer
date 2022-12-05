@@ -76,6 +76,7 @@ unsigned int countsToRelease = 62.5*MS_TO_RELEASE;
 unsigned int diffToRelease = 65536 - countsToRelease; // care for changes in timer-settings!
 long lastBeat = 0;
 byte divider = 1; 
+byte divider_counter = 0;
 unsigned int dividerAVG[AVG_LENGTH];
 byte dividerAVG_pointer = 0;
 
@@ -184,17 +185,15 @@ void update_BPM_CLK(){
   if(timer_mode == CLK_MODE){
     //if(b[CLK_IN].read() == HIGH){
     if(digitalRead(PIN_CLK_IN)){
-      if(divider == 1){
+      if(divider < 6){
         countsToInterrupt = 0;
         flagInterrupt = false;
         clk_blocked = false;
-        trigger();
+        if(divider_counter == 0){
+          trigger();
+        }
         clk_blocked = true;
-      } else if(divider < 6){
-        // TODO implementieren
-        // eventuell bei divider == 1 implementieren (mit Modulo divider)
-        // divide speed
-        // counter setzen und nur auf count spielen
+        divider_counter = (byte) ((divider_counter+1) % divider);
       } else { // divider >= 6
         // TODO implementieren
         // multiply speed und time-diff auslesen und timer setzen

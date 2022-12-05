@@ -79,6 +79,9 @@ byte divider = 1;
 byte divider_counter = 0;
 unsigned int dividerAVG[AVG_LENGTH];
 byte dividerAVG_pointer = 0;
+long divider_time = 0;
+long divider_next_step = 0;
+long divider_diff;
 
 boolean flagInterrupt = true;
 
@@ -102,7 +105,7 @@ void updateBPM_poti(){
   unsigned int bpmRedAVG = avg(bpmAVG);
   if((bpm>bpmRedAVG && bpm-bpmRedAVG > 2) || (bpm<bpmRedAVG && bpmRedAVG-bpm > 2)){
   //if(abs(bpm - avg(bpmAVG)) > 3){
-    infoTime = millis() + ANIMATUIN_TIME;
+    infoTime = millis() + ANIMATION_TIME;
     flagInfo = BPM_ANIMATION;
   }
   bpm = bpmRedAVG;
@@ -115,43 +118,6 @@ void updateBPM_poti(){
   }
   clk_state = CLK_OFF;
 }
-
-/*
-// Input signal interrupt method
-void update_BPM_CLK(){
-  if(timer_mode == CLK_MODE && !clk_blocked){ 
-    if(b[CLK_IN].read() == HIGH){
-      if(clk_state == CLK_OFF){
-        // 
-        clk_state++;
-      } else if (clk_state == CLK_LISTEN){
-        //
-        clk_state++;
-      } else { // state == run
-        long beat_time = millis();
-        long diff = beat_time - lastBeat;
-        lastBeat = beat_time;
-
-        diff = max(diff, 60000/MAX_BPM);
-        diff = min(diff, 60000/MIN_BPM);
-
-        // 65536-(16*10^6* diff /256)
-        countsToInterrupt = 65536 - (62.5*diff/divider);
-        // TODO: divider testen
-
-        bpm = (int) (60000/diff);
-
-        if(clk_state == CLK_RESET){ // reset for sync (only 1 time)  // TODO: eventuell immer beim 1er reset machen!
-          TCNT1 = countsToRelease;
-          flagInterrupt = false;
-          clk_state++;
-        }
-      }
-    }
-  }
-}
-*/
-
 
 void trigger(){
   TCNT1 = diffToRelease;
@@ -181,9 +147,9 @@ void trigger(){
   }
 }
 
+// Input signal interrupt method
 void update_BPM_CLK(){
   if(timer_mode == CLK_MODE){
-    //if(b[CLK_IN].read() == HIGH){
     if(digitalRead(PIN_CLK_IN)){
       if(divider < 6){
         countsToInterrupt = 0;
@@ -195,9 +161,30 @@ void update_BPM_CLK(){
         clk_blocked = true;
         divider_counter = (byte) ((divider_counter+1) % divider);
       } else { // divider >= 6
-        // TODO implementieren
-        // multiply speed und time-diff auslesen und timer setzen
+        long actTime = millis();
+        clk_blocked = false;
+        trigger();
+        clk_blocked = true;
+        byte mult = (byte) (divider - 4);
+        divider_diff = (long) ((actTime - divider_time) / mult);
+        divider_next_step = actTime + divider_diff;
+        divider_time = actTime;
+        divider_counter = mult - 1;
       }
+    }
+  }
+}
+
+void triggerMult(){
+  if(divider >= 6 && timer_mode == CLK_MODE && divider_counter > 0){
+    Serial.println(divider_counter);
+    long actTime = millis();
+    if(actTime >= divider_next_step){
+      clk_blocked = false;
+      trigger();
+      clk_blocked = true;
+      divider_counter--;
+      divider_next_step = (long) (divider_next_step + divider_diff);
     }
   }
 }
@@ -249,6 +236,11 @@ void setDot(){
 }
 
 void updateControls(){
+  timer_mode = digitalRead(PIN_TIMER_MODE)^1;
+  if(timer_mode == POTI_MODE){
+    updateBPM_poti();
+  } // bpm in CLK_Mode is set at interrupts
+
   for(int i=0; i<NUM_OF_BUTTONS; i++){
     b[i].update();
   }
@@ -265,7 +257,7 @@ void updateControls(){
   seqLengthAVG_pointer = ++seqLengthAVG_pointer % AVG_LENGTH;
   byte tmp_seqLen = (byte) avg(seqLengthAVG);
   if(sequenceLength != tmp_seqLen){
-    infoTime = millis() + ANIMATUIN_TIME;
+    infoTime = millis() + ANIMATION_TIME;
     flagInfo = SEQ_LENGTH_ANIMATION;
   }
   sequenceLength = tmp_seqLen;
@@ -274,7 +266,7 @@ void updateControls(){
   dividerAVG_pointer = ++dividerAVG_pointer % AVG_LENGTH;
   byte tmp_divider = (byte) avg(dividerAVG); 
   if(divider != tmp_divider){
-    infoTime = millis() + ANIMATUIN_TIME;
+    infoTime = millis() + ANIMATION_TIME;
     flagInfo = DIVIDER_ANIMATION;
   }  
   divider = (byte) tmp_divider;
@@ -562,11 +554,6 @@ void setup() {
 }
 
 void loop() {
-  timer_mode = digitalRead(PIN_TIMER_MODE)^1;
-  if(timer_mode == POTI_MODE){
-    updateBPM_poti();
-  } // bpm in CLK_Mode is set at interrupts
-  
   updatePick();
   updateControls();
 
@@ -574,7 +561,9 @@ void loop() {
   animateMatrix();
   printMatrix();
 
-  delay(20);
+  triggerMult();
+
+  delay(10);
 }
 
 // Timer-interrupt method

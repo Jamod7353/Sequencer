@@ -30,12 +30,11 @@ unsigned int sequence2 = patterns[3];
 #define SYNC 0
 #define PATTERN_MODE 1
 #define PICK_DOT 2
-#define CLK_IN 3
-#define RESET_CLK 4
+#define RESET_CLK 3
 
-#define NUM_OF_BUTTONS 5
+#define NUM_OF_BUTTONS 4
 
-Bounce * b = new Bounce[NUM_OF_BUTTONS];
+Bounce *b = new Bounce[NUM_OF_BUTTONS];
 
 
 // Matrix
@@ -53,7 +52,7 @@ byte PICK_COUNTER_NUM = 50;
 #define SEQ_LENGTH_ANIMATION 2
 #define DIVIDER_ANIMATION 3
 byte flagInfo = 0;
-unsigned long infoTime;
+long infoTime;
 
 // clock mode
 #define POTI_MODE 0
@@ -105,7 +104,7 @@ void updateBPM_poti(){
   unsigned int bpmRedAVG = avg(bpmAVG);
   if((bpm>bpmRedAVG && bpm-bpmRedAVG > 2) || (bpm<bpmRedAVG && bpmRedAVG-bpm > 2)){
   //if(abs(bpm - avg(bpmAVG)) > 3){
-    infoTime = millis() + ANIMATION_TIME;
+    infoTime = (long) (millis() + ANIMATION_TIME);
     flagInfo = BPM_ANIMATION;
   }
   bpm = bpmRedAVG;
@@ -161,7 +160,7 @@ void update_BPM_CLK(){
         clk_blocked = true;
         divider_counter = (byte) ((divider_counter+1) % divider);
       } else { // divider >= 6
-        long actTime = millis();
+        long actTime = (long) millis();
         clk_blocked = false;
         trigger();
         clk_blocked = true;
@@ -169,7 +168,7 @@ void update_BPM_CLK(){
         divider_diff = (long) ((actTime - divider_time) / mult);
         divider_next_step = actTime + divider_diff;
         divider_time = actTime;
-        divider_counter = mult - 1;
+        divider_counter = (byte) (mult - 1);
       }
     }
   }
@@ -178,12 +177,12 @@ void update_BPM_CLK(){
 void triggerMult(){
   if(divider >= 6 && timer_mode == CLK_MODE && divider_counter > 0){
     Serial.println(divider_counter);
-    long actTime = millis();
+    long actTime = (long) millis();
     if(actTime >= divider_next_step){
       clk_blocked = false;
       trigger();
       clk_blocked = true;
-      divider_counter--;
+      divider_counter = (byte) (divider_counter - 1);
       divider_next_step = (long) (divider_next_step + divider_diff);
     }
   }
@@ -257,7 +256,7 @@ void updateControls(){
   seqLengthAVG_pointer = ++seqLengthAVG_pointer % AVG_LENGTH;
   byte tmp_seqLen = (byte) avg(seqLengthAVG);
   if(sequenceLength != tmp_seqLen){
-    infoTime = millis() + ANIMATION_TIME;
+    infoTime = (long) (millis() + ANIMATION_TIME);
     flagInfo = SEQ_LENGTH_ANIMATION;
   }
   sequenceLength = tmp_seqLen;
@@ -266,7 +265,7 @@ void updateControls(){
   dividerAVG_pointer = ++dividerAVG_pointer % AVG_LENGTH;
   byte tmp_divider = (byte) avg(dividerAVG); 
   if(divider != tmp_divider){
-    infoTime = millis() + ANIMATION_TIME;
+    infoTime = (long) (millis() + ANIMATION_TIME);
     flagInfo = DIVIDER_ANIMATION;
   }  
   divider = (byte) tmp_divider;
@@ -459,16 +458,16 @@ void printMatrix(){
 void animateMatrix(){
   if(flagInfo == NORMAL_ANIMATION){
     // animate sequence
-    matrix[7-(playPointer / 8)] ^= (128*sequenceBlinker) >> (playPointer % 8);
+    matrix[7-(playPointer / 8)] ^= (byte) ((128*sequenceBlinker) >> (playPointer % 8));
     if(mode32){
       if(mode32_counter == 0){
-        matrix[7-(playPointer / 8 + 3)] ^= (128*sequenceBlinker) >> (playPointer % 8);
+        matrix[7-(playPointer / 8 + 3)] ^= (byte) ((128*sequenceBlinker) >> (playPointer % 8));
       } else {
-        matrix[7-(playPointer / 8 + 6)] ^= (128*sequenceBlinker) >> (playPointer % 8);
+        matrix[7-(playPointer / 8 + 6)] ^= (byte) ((128*sequenceBlinker) >> (playPointer % 8));
       }
     } else {
-      matrix[7-(playPointer / 8 + 3)] ^= (128*sequenceBlinker) >> (playPointer % 8);
-      matrix[7-(playPointer / 8 + 6)] ^= (128*sequenceBlinker) >> (playPointer % 8);
+      matrix[7-(playPointer / 8 + 3)] ^= (byte) ((128*sequenceBlinker) >> (playPointer % 8));
+      matrix[7-(playPointer / 8 + 6)] ^= (byte) ((128*sequenceBlinker) >> (playPointer % 8));
     }
     sequenceBlinker ^= 1;
 
@@ -483,7 +482,7 @@ void animateMatrix(){
     else {
       if(pickBlinker2){
         if(pickCounter++ < PICK_COUNTER_NUM){
-          matrix[7-(pickPointer/8 + sequencePointer*3)] ^= (pickBlinker*128)>>(pickPointer%8);
+          matrix[7-(pickPointer/8 + sequencePointer*3)] ^= (byte) ((pickBlinker*128)>>(pickPointer%8));
           pickBlinker ^= 1;
           pickBlinker2 = 0;
         }
@@ -502,6 +501,7 @@ void setup() {
 
   // setup digital pins
   pinMode(PIN_TIMER_MODE, INPUT_PULLUP);
+  pinMode(PIN_CLK_IN, INPUT);
   pinMode(PIN_OUT1, OUTPUT);
   pinMode(PIN_OUT2, OUTPUT);
   pinMode(PIN_OUT3, OUTPUT);
@@ -512,7 +512,6 @@ void setup() {
   pinMode(PIN_32MODE, INPUT_PULLUP);
 
   b[RESET_CLK].attach(PIN_RESET_CLK, INPUT_PULLUP);
-  b[CLK_IN].attach(PIN_CLK_IN, INPUT);
   b[SYNC].attach(PIN_SYNC, INPUT_PULLUP);
   b[PATTERN_MODE].attach(PIN_PATTERN, INPUT_PULLUP);
   b[PICK_DOT].attach(PIN_PICK_DOT, INPUT_PULLUP);

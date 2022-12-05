@@ -115,6 +115,7 @@ void updateBPM_poti(){
   clk_state = CLK_OFF;
 }
 
+/*
 // Input signal interrupt method
 void update_BPM_CLK(){
   if(timer_mode == CLK_MODE && !clk_blocked){ 
@@ -144,6 +145,23 @@ void update_BPM_CLK(){
           flagInterrupt = false;
           clk_state++;
         }
+      }
+    }
+  }
+}
+*/
+
+void update_BPM_CLK(){
+  if(timer_mode == CLK_MODE){
+    if(b[CLK_IN].read() == HIGH){
+      if(divider == 1){
+        countsToInterrupt = 99999;
+        TCNT1 = 65535; // TODO: testen! // oder 65535 setzen
+        flagInterrupt = false;
+      } else if(divider > 1){
+        // TODO implementieren
+      } else { // divider <= 0
+        // TODO implementieren
       }
     }
   }
@@ -202,10 +220,8 @@ void updateControls(){
   if(b[PICK_DOT].fell()){
     setDot();
   }
-  if(b[SYNC].read() == LOW){
-    if(clk_state == 4){
-      clk_state = 3;
-    }
+  if(b[SYNC].fell()){
+    playPointer = 0;
   }
   if(b[RESET_CLK].fell()){
     clk_state = 0;
@@ -507,7 +523,6 @@ void loop() {
   printMatrix();
 
   delay(20);
-
 }
 
 // Timer-interrupt method

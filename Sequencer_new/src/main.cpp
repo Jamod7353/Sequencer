@@ -450,6 +450,7 @@ void buildMatrix(){
 }
 
 void printMatrix(){
+  //lc.clearDisplay(0);
   for(int i=0; i<8; i++){
     lc.setRow(0, i, matrix[i]);
   }

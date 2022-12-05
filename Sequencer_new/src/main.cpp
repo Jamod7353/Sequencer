@@ -4,7 +4,6 @@
 #include "config.h"
 #include "patterns.h"
 
-
 // play and pick contol
 #define AVG_LENGTH 8
 byte sequenceLength = 15;
@@ -73,7 +72,8 @@ unsigned int bpmAVG[AVG_LENGTH];
 byte bpmAVG_pointer = 0;
 unsigned int bpm_old = 119;
 unsigned int countsToInterrupt = 0;
-unsigned int countsToRelease = 65536 - (62.5*MS_TO_RELEASE); // care for changes in timer-settings!
+unsigned int countsToRelease = 62.5*MS_TO_RELEASE;
+unsigned int diffToRelease = 65536 - countsToRelease; // care for changes in timer-settings!
 long lastBeat = 0;
 byte divider = 1; 
 unsigned int dividerAVG[AVG_LENGTH];
@@ -109,7 +109,7 @@ void updateBPM_poti(){
   if(abs(bpm_old-bpm)>1){
     // Timer-interrupt in ms: 65535-(16*10^6*60/bpm/256)
     float tmp = (65536 - 3750000.0/bpm);
-    countsToInterrupt = (int) tmp;
+    countsToInterrupt = (unsigned int) tmp;
     bpm_old = bpm;
   }
   clk_state = CLK_OFF;
@@ -151,17 +151,52 @@ void update_BPM_CLK(){
 }
 */
 
+
+void trigger(){
+  TCNT1 = diffToRelease;
+  flagInterrupt = true;
+  if(timer_mode == CLK_MODE && !clk_blocked){
+      playPointer = (playPointer+1) % sequenceLength;
+  if(playPointer == 0){
+    mode32_counter = (mode32_counter+1) % 2;
+  }
+    // trigger clk and signal if in sequence
+    digitalWrite(PIN_CLK_OUT, HIGH);
+    if(sequence0 & (32768>>playPointer)){digitalWrite(PIN_OUT1, HIGH);}
+
+    // in mode32 play seq1 and seq2 on both outputs
+    if(mode32){
+      if(mode32_counter == 0){
+        if(sequence1 & (32768>>playPointer)){digitalWrite(PIN_OUT2, HIGH);}
+        if(sequence1 & (32768>>playPointer)){digitalWrite(PIN_OUT3, HIGH);}
+      } else {
+        if(sequence2 & (32768>>playPointer)){digitalWrite(PIN_OUT2, HIGH);}
+        if(sequence2 & (32768>>playPointer)){digitalWrite(PIN_OUT3, HIGH);}
+      }
+    } else {
+      if(sequence1 & (32768>>playPointer)){digitalWrite(PIN_OUT2, HIGH);}
+      if(sequence2 & (32768>>playPointer)){digitalWrite(PIN_OUT3, HIGH);}
+    }
+  }
+}
+
 void update_BPM_CLK(){
   if(timer_mode == CLK_MODE){
-    if(b[CLK_IN].read() == HIGH){
+    //if(b[CLK_IN].read() == HIGH){
+    if(digitalRead(PIN_CLK_IN)){
       if(divider == 1){
-        countsToInterrupt = 99999;
-        TCNT1 = 65535; // TODO: testen! // oder 65535 setzen
+        countsToInterrupt = 0;
         flagInterrupt = false;
-      } else if(divider > 1){
+        clk_blocked = false;
+        trigger();
+        clk_blocked = true;
+      } else if(divider < 6){
         // TODO implementieren
-      } else { // divider <= 0
+        // divide speed
+        // counter setzen und nur auf count spielen
+      } else { // divider >= 6
         // TODO implementieren
+        // multiply speed und time-diff auslesen und timer setzen
       }
     }
   }
@@ -266,10 +301,21 @@ void buildMatrix(){
 
   } else {
     unsigned int number;
+    unsigned int divider_sign = 0;
     if(flagInfo == BPM_ANIMATION){
       number = bpm;
     } else if(flagInfo == DIVIDER_ANIMATION){
-      number = divider;
+      if(divider == 1){
+        number = divider;
+      }
+      else if(divider <= 5){
+        number = divider;
+        divider_sign = 1;
+      } else {
+        number = divider-4;
+        divider_sign = 2;
+      }
+      
     } else if(flagInfo == SEQ_LENGTH_ANIMATION){
       number = sequenceLength;
     }
@@ -296,57 +342,64 @@ void buildMatrix(){
         break;
     }
     unsigned int tens = (number % 100) / 10; 
-
-    switch (tens) {
-      case 0:
-        matrix[6] = 32+16+8+4+2 | matrix[6];
-        matrix[5] = 32+2 | matrix[5];
-        matrix[4] = 32+16+8+4+2 | matrix[4];
-        break;
-      case 1:
-        matrix[6] = 8 | matrix[6];
-        matrix[5] = 16 | matrix[4];
-        matrix[4] = 32+16+8+4+2 | matrix[4];
-        break;
-      case 2:
-        matrix[6] = 32+8+4+2 | matrix[6];
-        matrix[5] = 32+8+2 | matrix[5];
-        matrix[4] = 32+16+8+2 | matrix[4];
-        break;
-      case 3:
-        matrix[6] = 32+8+2 | matrix[6];
-        matrix[5] = 32+8+2 | matrix[5];
-        matrix[4] = 32+16+8+4+2 | matrix[4];
-        break;
-      case 4:
-        matrix[6] = 32+16+8 | matrix[6];
-        matrix[5] = 8 | matrix[5];
-        matrix[4] = 32+16+8+4+2 | matrix[4];
-        break;
-      case 5:
-        matrix[6] = 32+16+8+2 | matrix[6];
-        matrix[5] = 32+8+2 | matrix[5];
-        matrix[4] = 32+8+4+2 | matrix[4];
-        break;
-      case 6:
-        matrix[6] = 32+16+8+4+2 | matrix[6];
-        matrix[5] = 32+8+2 | matrix[5];
-        matrix[4] = 32+8+4+2 | matrix[4];
-        break;
-      case 7:
-        matrix[6] = 32 | matrix[6];
-        matrix[5] = 32 | matrix[4];
-        matrix[4] = 32+16+8+4+2 | matrix[4];
-      case 8:
-        matrix[6] = 32+16+8+4+2 | matrix[6];
-        matrix[5] = 32+8+2 | matrix[5];
-        matrix[4] = 32+16+8+4+2 | matrix[4];
-      case 9:
-        matrix[6] = 32+16+8+2 | matrix[6];
-        matrix[5] = 32+8+2 | matrix[5];
-        matrix[4] = 32+16+8+4+2 | matrix[4];
-      default:
-        break;
+    if(flagInfo != DIVIDER_ANIMATION){
+      switch (tens) {
+        case 0:
+          matrix[6] = 32+16+8+4+2 | matrix[6];
+          matrix[5] = 32+2 | matrix[5];
+          matrix[4] = 32+16+8+4+2 | matrix[4];
+          break;
+        case 1:
+          matrix[6] = 8 | matrix[6];
+          matrix[5] = 16 | matrix[4];
+          matrix[4] = 32+16+8+4+2 | matrix[4];
+          break;
+        case 2:
+          matrix[6] = 32+8+4+2 | matrix[6];
+          matrix[5] = 32+8+2 | matrix[5];
+          matrix[4] = 32+16+8+2 | matrix[4];
+          break;
+        case 3:
+          matrix[6] = 32+8+2 | matrix[6];
+          matrix[5] = 32+8+2 | matrix[5];
+          matrix[4] = 32+16+8+4+2 | matrix[4];
+          break;
+        case 4:
+          matrix[6] = 32+16+8 | matrix[6];
+          matrix[5] = 8 | matrix[5];
+          matrix[4] = 32+16+8+4+2 | matrix[4];
+          break;
+        case 5:
+          matrix[6] = 32+16+8+2 | matrix[6];
+          matrix[5] = 32+8+2 | matrix[5];
+          matrix[4] = 32+8+4+2 | matrix[4];
+          break;
+        case 6:
+          matrix[6] = 32+16+8+4+2 | matrix[6];
+          matrix[5] = 32+8+2 | matrix[5];
+          matrix[4] = 32+8+4+2 | matrix[4];
+          break;
+        case 7:
+          matrix[6] = 32 | matrix[6];
+          matrix[5] = 32 | matrix[4];
+          matrix[4] = 32+16+8+4+2 | matrix[4];
+        case 8:
+          matrix[6] = 32+16+8+4+2 | matrix[6];
+          matrix[5] = 32+8+2 | matrix[5];
+          matrix[4] = 32+16+8+4+2 | matrix[4];
+        case 9:
+          matrix[6] = 32+16+8+2 | matrix[6];
+          matrix[5] = 32+8+2 | matrix[5];
+          matrix[4] = 32+16+8+4+2 | matrix[4];
+        default:
+          break;
+      }
+    } else {
+      if(divider_sign == 1){
+        matrix[4] = 16+4 | matrix[4];
+      } else if(divider_sign == 2){
+        matrix[4] = 8 | matrix[4];
+      }
     }
 
     unsigned int num = (number % 10); 
@@ -402,7 +455,7 @@ void buildMatrix(){
       default:
         break;
     }
-  }
+  } 
 }
 
 void printMatrix(){
@@ -450,7 +503,6 @@ void animateMatrix(){
     flagInfo = NORMAL_ANIMATION;
   }
 }
-
 
 void setup() {
   Serial.begin(9600);
@@ -501,7 +553,7 @@ void setup() {
   noInterrupts();
   TCCR1A = 0;
   TCCR1B = 0;
-  TCNT1 = countsToRelease;
+  TCNT1 = diffToRelease;
   TCCR1B |= (1 << CS12);  //prescale 256
   TIMSK1 |= (1 << TOIE1);
   interrupts();
@@ -528,39 +580,14 @@ void loop() {
 // Timer-interrupt method
 ISR(TIMER1_OVF_vect){
   if(!flagInterrupt){
-    TCNT1 = countsToRelease;
-    flagInterrupt = true;
-
-    playPointer = (playPointer+1) % sequenceLength;
-    if(playPointer == 0){
-      mode32_counter = (mode32_counter+1) % 2;
-    }
-    
-    // trigger clk and signal if in sequence
-    digitalWrite(PIN_CLK_OUT, HIGH);
-    if(sequence0 & (32768>>playPointer)){digitalWrite(PIN_OUT1, HIGH);}
-
-    // in mode32 play seq1 and seq2 on both outputs
-    if(mode32){
-      if(mode32_counter == 0){
-        if(sequence1 & (32768>>playPointer)){digitalWrite(PIN_OUT2, HIGH);}
-        if(sequence1 & (32768>>playPointer)){digitalWrite(PIN_OUT3, HIGH);}
-      } else {
-        if(sequence2 & (32768>>playPointer)){digitalWrite(PIN_OUT2, HIGH);}
-        if(sequence2 & (32768>>playPointer)){digitalWrite(PIN_OUT3, HIGH);}
-      }
-    } else {
-      if(sequence1 & (32768>>playPointer)){digitalWrite(PIN_OUT2, HIGH);}
-      if(sequence2 & (32768>>playPointer)){digitalWrite(PIN_OUT3, HIGH);}
-    }
+    trigger();
   } else {
-      flagInterrupt = false;
-      TCNT1 = countsToInterrupt + countsToRelease;
-
-      // end trigger signal
-      digitalWrite(PIN_CLK_OUT, LOW);
-      digitalWrite(PIN_OUT1, LOW);
-      digitalWrite(PIN_OUT2, LOW);
-      digitalWrite(PIN_OUT3, LOW);
+    flagInterrupt = false;
+    TCNT1 = countsToInterrupt + countsToRelease;
+    // end trigger signal
+    digitalWrite(PIN_CLK_OUT, LOW);
+    digitalWrite(PIN_OUT1, LOW);
+    digitalWrite(PIN_OUT2, LOW);
+    digitalWrite(PIN_OUT3, LOW);
   }
 }

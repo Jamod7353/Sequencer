@@ -13,7 +13,6 @@ byte playPointer = 15;
 byte pickPointer = 0;
 int pickPointerAVG[AVG_LENGTH];
 byte pickPointerAVG_pointer = 0;
-byte pickPointer_old = 0;
 byte sequencePointer = 0;
 boolean patternMode = false;
 byte mode32_counter = 0;
@@ -45,8 +44,6 @@ byte pickBlinker = 0;
 boolean pickBlinker2 = false;
 byte animationCounter = 0;
 byte ANIMATION_NUM = 3;
-byte pickCounter = 0;
-byte PICK_COUNTER_NUM = 50;
 #define NORMAL_ANIMATION 0
 #define BPM_ANIMATION 1
 #define SEQ_LENGTH_ANIMATION 2
@@ -189,26 +186,23 @@ void triggerMult(){
 }
 
 void updatePick(){
-    if(patternMode){ // pick pattern
-      
-      int value = map(analogRead(PIN_PICK), 0, 1023, 0, sizeof(patterns)/2);
-      
-      if(value == sizeof(patterns)/2){
-        pickSequence = randomSequence;
-      } else {
-        pickSequence = patterns[value];
-      }
-     
-    } else { // pick dot
-      pickPointerAVG[pickPointerAVG_pointer] = (int) map(analogRead(PIN_PICK), 0, 1023, 0, 47);
-      pickPointerAVG_pointer = ++pickPointerAVG_pointer % AVG_LENGTH;
-      int value = avg(pickPointerAVG);
-      pickPointer = value % 16;
-      sequencePointer = value / 16;
-        // counter for animation
-      if(pickPointer != pickPointer_old){
-      pickCounter = 0;
+  if(patternMode){ // pick pattern
+    
+    int value = map(analogRead(PIN_PICK), 0, 1023, 0, sizeof(patterns)/2);
+    
+    if(value == sizeof(patterns)/2){
+      pickSequence = randomSequence;
+    } else {
+      pickSequence = patterns[value];
     }
+    
+  } else { // pick dot
+    //TODO: map 0 to 15 -> free Button to chose sequence
+    pickPointerAVG[pickPointerAVG_pointer] = (int) map(analogRead(PIN_PICK), 0, 1023, 0, 47);
+    pickPointerAVG_pointer = ++pickPointerAVG_pointer % AVG_LENGTH;
+    int value = avg(pickPointerAVG);
+    pickPointer = value % 16;
+    sequencePointer = value / 16;
   }
 }
 
@@ -280,6 +274,7 @@ void updateControls(){
 }
 
 void buildMatrix(){
+  flagInfo = NORMAL_ANIMATION; // TODO: delete
   if(flagInfo == NORMAL_ANIMATION){
     matrix[7] = (byte) (sequence0 >> 8);
     matrix[6] = (byte) sequence0;
@@ -450,7 +445,6 @@ void buildMatrix(){
 }
 
 void printMatrix(){
-  lc.clearDisplay(0);
   for(int i=0; i<8; i++){
     lc.setRow(0, i, matrix[i]);
   }
@@ -459,16 +453,17 @@ void printMatrix(){
 void animateMatrix(){
   if(flagInfo == NORMAL_ANIMATION){
     // animate sequence
-    matrix[7-(playPointer / 8)] ^= (byte) ((128*sequenceBlinker) >> (playPointer % 8));
+    matrix[7-(playPointer / 8)] ^= (128*sequenceBlinker) >> (playPointer % 8);
+    
     if(mode32){
       if(mode32_counter == 0){
-        matrix[7-(playPointer / 8 + 3)] ^= (byte) ((128*sequenceBlinker) >> (playPointer % 8));
+        matrix[7-(playPointer / 8 + 3)] ^= (128*sequenceBlinker) >> (playPointer % 8);
       } else {
-        matrix[7-(playPointer / 8 + 6)] ^= (byte) ((128*sequenceBlinker) >> (playPointer % 8));
+        matrix[7-(playPointer / 8 + 6)] ^= (128*sequenceBlinker) >> (playPointer % 8);
       }
     } else {
-      matrix[7-(playPointer / 8 + 3)] ^= (byte) ((128*sequenceBlinker) >> (playPointer % 8));
-      matrix[7-(playPointer / 8 + 6)] ^= (byte) ((128*sequenceBlinker) >> (playPointer % 8));
+      matrix[7-(playPointer / 8 + 3)] ^= (128*sequenceBlinker) >> (playPointer % 8);
+      matrix[7-(playPointer / 8 + 6)] ^= (128*sequenceBlinker) >> (playPointer % 8);
     }
     sequenceBlinker ^= 1;
 
@@ -476,17 +471,13 @@ void animateMatrix(){
     if(patternMode){
       matrix[7-3*sequencePointer]   = (byte) (pickSequence >> 8);
       matrix[7-(3*sequencePointer+1)] = (byte) pickSequence;
-
-      pickCounter = 0; //reset animation
     }
     // animate dot pick
     else {
       if(pickBlinker2){
-        if(pickCounter++ < PICK_COUNTER_NUM){
-          matrix[7-(pickPointer/8 + sequencePointer*3)] ^= (byte) ((pickBlinker*128)>>(pickPointer%8));
-          pickBlinker ^= 1;
-          pickBlinker2 = 0;
-        }
+        matrix[7-(pickPointer/8 + sequencePointer*3)] ^= (byte) ((pickBlinker*128)>>(pickPointer%8));
+        pickBlinker ^= 1;
+        pickBlinker2 = 0;
       } else {
         pickBlinker2 = 1;
       }

@@ -13,7 +13,7 @@
 LedControl lc=LedControl(12,11,10,8);
 
 /* we always wait a bit between updates of the display */
-unsigned long delaytime=500;
+long delaytime=500;
 
 /* 
  This time we have more than one device. 

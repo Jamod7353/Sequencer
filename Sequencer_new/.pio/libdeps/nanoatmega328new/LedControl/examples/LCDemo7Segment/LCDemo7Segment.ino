@@ -12,7 +12,7 @@
 LedControl lc=LedControl(12,11,10,1);
 
 /* we always wait a bit between updates of the display */
-unsigned long delaytime=250;
+long delaytime=250;
 
 void setup() {
   /*

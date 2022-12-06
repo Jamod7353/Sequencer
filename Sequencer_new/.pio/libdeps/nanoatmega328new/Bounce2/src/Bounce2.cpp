@@ -100,11 +100,11 @@ bool Debouncer::update()
 }
 
 // WIP HELD
-unsigned long Debouncer::previousDuration() const {
+long Debouncer::previousDuration() const {
 	return durationOfPreviousState;
 }
 
-unsigned long Debouncer::currentDuration() const {
+long Debouncer::currentDuration() const {
 	return (millis() - stateChangeLastTime);
 }
 

@@ -36,7 +36,7 @@ int ledState = LOW;
 // SET A VARIABLE TO STORE THE BLINKING STATE
 bool blinkLed = false;
 // SET A VARIABLE TO STORE THE LAST TIME THE LED BLINKED
-unsigned long blinkLedLastTime;
+long blinkLedLastTime;
 
 void setup() {
 

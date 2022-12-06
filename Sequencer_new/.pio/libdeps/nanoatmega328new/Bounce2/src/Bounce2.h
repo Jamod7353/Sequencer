@@ -137,10 +137,10 @@ public:
 
      Is reset to 0 once the pin rises ( rose() ) or falls ( fell() ).
     
-      @return The duration in milliseconds (unsigned long) of the current state.
+      @return The duration in milliseconds (long) of the current state.
      */
 
-  unsigned long currentDuration() const;
+  long currentDuration() const;
 
 
   /**
@@ -148,9 +148,9 @@ public:
 
      Takes the values of duration() once the pin changes state.
     
-      @return The duration in milliseconds (unsigned long) of the previous state. 
+      @return The duration in milliseconds (long) of the previous state. 
      */
-  unsigned long previousDuration() const;
+  long previousDuration() const;
   
       /**
      @brief DEPRECATED (i.e. do not use). Renamed currentDuration().
@@ -158,21 +158,21 @@ public:
 	 This member function is DEPRECATED will be removed next major version. DO NOT USE IT. USE currentDuration() INSTEAD.
 	 It was renamed to avoid confusion with previousDuration().
 	 
-	  @return The duration in milliseconds (unsigned long) of the current state.
+	  @return The duration in milliseconds (long) of the current state.
      */
     [[deprecated]]
-    unsigned long duration() {
+    long duration() {
 		return currentDuration();
 	};
 
 protected:
   void begin();
   virtual bool readCurrentState() =0;
-  unsigned long previous_millis;
+  long previous_millis;
   uint16_t interval_millis;
   uint8_t state;
-  unsigned long stateChangeLastTime;
-  unsigned long durationOfPreviousState;
+  long stateChangeLastTime;
+  long durationOfPreviousState;
 
 };
 
@@ -215,7 +215,7 @@ public:
     */
 	void attach(int pin);
 
-  Bounce(uint8_t pin, unsigned long interval_millis ) : Bounce() {
+  Bounce(uint8_t pin, long interval_millis ) : Bounce() {
     attach(pin);
     interval(interval_millis);
   }

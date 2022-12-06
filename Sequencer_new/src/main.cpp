@@ -7,11 +7,11 @@
 // play and pick contol
 #define AVG_LENGTH 8
 byte sequenceLength = 15;
-unsigned int seqLengthAVG[AVG_LENGTH];
+int seqLengthAVG[AVG_LENGTH];
 byte seqLengthAVG_pointer = 0;
 byte playPointer = 15;
 byte pickPointer = 0;
-unsigned int pickPointerAVG[AVG_LENGTH];
+int pickPointerAVG[AVG_LENGTH];
 byte pickPointerAVG_pointer = 0;
 byte pickPointer_old = 0;
 byte sequencePointer = 0;
@@ -19,12 +19,12 @@ boolean patternMode = false;
 byte mode32_counter = 0;
 boolean mode32 = false;
 
-unsigned int pickSequence = patterns[4];
-unsigned int randomSequence;
+int pickSequence = patterns[4];
+int randomSequence;
 
-unsigned int sequence0 = patterns[2];
-unsigned int sequence1 = patterns[1];
-unsigned int sequence2 = patterns[3];
+int sequence0 = patterns[2];
+int sequence1 = patterns[1];
+int sequence2 = patterns[3];
 
 // buttons
 #define SYNC 0
@@ -66,17 +66,17 @@ byte clk_state = 0;
 boolean clk_blocked = false;
 
 // bpm and timer
-unsigned int bpm = 310;
-unsigned int bpmAVG[AVG_LENGTH];
+int bpm = 310;
+int bpmAVG[AVG_LENGTH];
 byte bpmAVG_pointer = 0;
-unsigned int bpm_old = 119;
-unsigned int countsToInterrupt = 0;
-unsigned int countsToRelease = 62.5*MS_TO_RELEASE;
-unsigned int diffToRelease = 65536 - countsToRelease; // care for changes in timer-settings!
+int bpm_old = 119;
+int countsToInterrupt = 0;
+int countsToRelease =(int) (62.5*MS_TO_RELEASE);
+int diffToRelease = 65536 - countsToRelease; // care for changes in timer-settings!
 long lastBeat = 0;
 byte divider = 1; 
 byte divider_counter = 0;
-unsigned int dividerAVG[AVG_LENGTH];
+int dividerAVG[AVG_LENGTH];
 byte dividerAVG_pointer = 0;
 long divider_time = 0;
 long divider_next_step = 0;
@@ -88,9 +88,9 @@ void generateRandomPattern(){
   randomSequence = random(0, 65535);
 }
 
-unsigned int avg(unsigned int array[]){
+int avg(int array[]){
   // save some values in an array and calculate avarage to flatten values
-  unsigned int sum = 0;
+  int sum = 0;
   for(int i=0; i<AVG_LENGTH; i++){
     sum += array[i];
   }
@@ -99,9 +99,9 @@ unsigned int avg(unsigned int array[]){
 }
 
 void updateBPM_poti(){
-  bpmAVG[bpmAVG_pointer] = (unsigned int) map(analogRead(PIN_BPM_POTI), 0, 1023, MIN_BPM, MAX_BPM);
+  bpmAVG[bpmAVG_pointer] = (int) map(analogRead(PIN_BPM_POTI), 0, 1023, MIN_BPM, MAX_BPM);
   bpmAVG_pointer = ++bpmAVG_pointer % AVG_LENGTH;
-  unsigned int bpmRedAVG = avg(bpmAVG);
+  int bpmRedAVG = avg(bpmAVG);
   if((bpm>bpmRedAVG && bpm-bpmRedAVG > 2) || (bpm<bpmRedAVG && bpmRedAVG-bpm > 2)){
   //if(abs(bpm - avg(bpmAVG)) > 3){
     infoTime = (long) (millis() + ANIMATION_TIME);
@@ -112,7 +112,7 @@ void updateBPM_poti(){
   if(abs(bpm_old-bpm)>1){
     // Timer-interrupt in ms: 65535-(16*10^6*60/bpm/256)
     float tmp = (65536 - 3750000.0/bpm);
-    countsToInterrupt = (unsigned int) tmp;
+    countsToInterrupt = (int) tmp;
     bpm_old = bpm;
   }
   clk_state = CLK_OFF;
@@ -200,7 +200,7 @@ void updatePick(){
       }
      
     } else { // pick dot
-      pickPointerAVG[pickPointerAVG_pointer] = (unsigned int) map(analogRead(PIN_PICK), 0, 1023, 0, 47);
+      pickPointerAVG[pickPointerAVG_pointer] = (int) map(analogRead(PIN_PICK), 0, 1023, 0, 47);
       pickPointerAVG_pointer = ++pickPointerAVG_pointer % AVG_LENGTH;
       int value = avg(pickPointerAVG);
       pickPointer = value % 16;
@@ -252,7 +252,7 @@ void updateControls(){
   if(b[RESET_CLK].fell()){
     clk_state = 0;
   }
-  seqLengthAVG[seqLengthAVG_pointer] = (unsigned int) map(analogRead(PIN_SEQUENCE_LENGTH), 0, 1023, 1, 16);
+  seqLengthAVG[seqLengthAVG_pointer] = (int) map(analogRead(PIN_SEQUENCE_LENGTH), 0, 1023, 1, 16);
   seqLengthAVG_pointer = ++seqLengthAVG_pointer % AVG_LENGTH;
   byte tmp_seqLen = (byte) avg(seqLengthAVG);
   if(sequenceLength != tmp_seqLen){
@@ -261,7 +261,7 @@ void updateControls(){
   }
   sequenceLength = tmp_seqLen;
 
-  dividerAVG[dividerAVG_pointer] = (unsigned int) map(analogRead(PIN_DIVIDER), 0, 1023, 1, 8);
+  dividerAVG[dividerAVG_pointer] = (int) map(analogRead(PIN_DIVIDER), 0, 1023, 1, 8);
   dividerAVG_pointer = ++dividerAVG_pointer % AVG_LENGTH;
   byte tmp_divider = (byte) avg(dividerAVG); 
   if(divider != tmp_divider){
@@ -291,8 +291,8 @@ void buildMatrix(){
     matrix[0] = (byte) sequence2;
 
   } else {
-    unsigned int number;
-    byte divider_sign = 0;
+    int number;
+    byte divider_operator = 0;
     if(flagInfo == BPM_ANIMATION){
       number = bpm;
     } else if(flagInfo == DIVIDER_ANIMATION){
@@ -301,10 +301,10 @@ void buildMatrix(){
       }
       else if(divider <= 5){
         number = divider;
-        divider_sign = 1;
+        divider_operator = 1;
       } else {
         number = divider-4;
-        divider_sign = 2;
+        divider_operator = 2;
       }
       
     } else if(flagInfo == SEQ_LENGTH_ANIMATION){
@@ -313,7 +313,7 @@ void buildMatrix(){
     for(int i=0; i<8; i++){
       matrix[i] = 0;
     }
-    unsigned int hundreds = number / 100;
+    int hundreds = number / 100;
     switch (hundreds) {
       case 6:
         matrix[2] = 128;
@@ -332,7 +332,7 @@ void buildMatrix(){
         matrix[7] = 0;
         break;
     }
-    unsigned int tens = (number % 100) / 10; 
+    int tens = (number % 100) / 10; 
     if(flagInfo != DIVIDER_ANIMATION){
       switch (tens) {
         case 0:
@@ -386,14 +386,14 @@ void buildMatrix(){
           break;
       }
     } else {
-      if(divider_sign == 1){
+      if(divider_operator == 1){
         matrix[4] = 16+4 | matrix[4];
-      } else if(divider_sign == 2){
+      } else if(divider_operator == 2){
         matrix[4] = 8 | matrix[4];
       }
     }
 
-    unsigned int num = (number % 10); 
+    int num = (number % 10); 
 
     switch (num) {
       case 0:
@@ -450,7 +450,7 @@ void buildMatrix(){
 }
 
 void printMatrix(){
-  //lc.clearDisplay(0);
+  lc.clearDisplay(0);
   for(int i=0; i<8; i++){
     lc.setRow(0, i, matrix[i]);
   }
@@ -521,10 +521,10 @@ void setup() {
   }
 
   for(int i=0; i<AVG_LENGTH; i++){
-    bpmAVG[i] = (unsigned int) map(analogRead(PIN_BPM_POTI), 0, 1023, MIN_BPM, MAX_BPM);
-    dividerAVG[i] = (unsigned int) map(analogRead(PIN_DIVIDER), 0, 1023, 1, 8);
-    seqLengthAVG[i] = (unsigned int) map(analogRead(PIN_SEQUENCE_LENGTH), 0, 1023, 1, 16);
-    pickPointerAVG[i] = (unsigned int) map(analogRead(PIN_PICK), 0, 1023, 0, 47);
+    bpmAVG[i] = (int) map(analogRead(PIN_BPM_POTI), 0, 1023, MIN_BPM, MAX_BPM);
+    dividerAVG[i] = (int) map(analogRead(PIN_DIVIDER), 0, 1023, 1, 8);
+    seqLengthAVG[i] = (int) map(analogRead(PIN_SEQUENCE_LENGTH), 0, 1023, 1, 16);
+    pickPointerAVG[i] = (int) map(analogRead(PIN_PICK), 0, 1023, 0, 47);
   }
 
   // setup LCD-Matrix
@@ -545,7 +545,7 @@ void setup() {
   noInterrupts();
   TCCR1A = 0;
   TCCR1B = 0;
-  TCNT1 = diffToRelease;
+  TCNT1 = 0;
   TCCR1B |= (1 << CS12);  //prescale 256
   TIMSK1 |= (1 << TOIE1);
   interrupts();

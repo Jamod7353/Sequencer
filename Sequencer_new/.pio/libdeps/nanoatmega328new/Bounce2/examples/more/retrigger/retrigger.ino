@@ -20,7 +20,7 @@ Open the Serial Monitor (57600 baud) for debug messages.
 Bounce debouncer = Bounce(); 
 
 int buttonState;
-unsigned long buttonPressTimeStamp;
+long buttonPressTimeStamp;
 
 int ledState;
 

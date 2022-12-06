@@ -28,10 +28,10 @@
 Bounce bounce = Bounce();
 
 // SET A VARIABLE TO STORE THE INTERVAL FOR HOW LONG TO KEEP THE LED HIGH
-unsigned long ledHighInterval;
+long ledHighInterval;
 
 // SET A VARIABLE TO STORE THE START TIME WHEN THE LED WAS TURNED HIGH
-unsigned long ledHighLastTime;
+long ledHighLastTime;
 
 void setup() {
 

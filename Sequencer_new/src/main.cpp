@@ -274,8 +274,9 @@ void updateControls(){
 }
 
 void buildMatrix(){
-  flagInfo = NORMAL_ANIMATION; // TODO: delete
+  //flagInfo = NORMAL_ANIMATION; // TODO: delete
   if(flagInfo == NORMAL_ANIMATION){
+    int number = 0;
     matrix[7] = (byte) (sequence0 >> 8);
     matrix[6] = (byte) sequence0;
     matrix[5] = 0;
@@ -451,6 +452,7 @@ void printMatrix(){
 }
 
 void animateMatrix(){
+  //flagInfo = NORMAL_ANIMATION;
   if(flagInfo == NORMAL_ANIMATION){
     // animate sequence
     matrix[7-(playPointer / 8)] ^= (128*sequenceBlinker) >> (playPointer % 8);

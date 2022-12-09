@@ -29,7 +29,7 @@ int sequence2 = patterns[3];
 #define SYNC 0
 #define PATTERN_MODE 1
 #define PICK_DOT 2
-#define RESET_CLK 3
+#define TOGGLE_DISPLAY 3 
 
 #define NUM_OF_BUTTONS 4
 
@@ -49,17 +49,12 @@ byte ANIMATION_NUM = 3;
 #define SEQ_LENGTH_ANIMATION 2
 #define DIVIDER_ANIMATION 3
 byte flagInfo = 0;
-long infoTime;
+//long infoTime;
 
 // clock mode
 #define POTI_MODE 0
 #define CLK_MODE 1
 byte timer_mode = POTI_MODE;
-#define CLK_OFF 0
-#define CLK_LISTEN 1
-#define CLK_RESET 2
-#define CLK_RUN 3
-byte clk_state = 0;
 boolean clk_blocked = false;
 
 // bpm and timer
@@ -101,7 +96,7 @@ void updateBPM_poti(){
   int bpmRedAVG = avg(bpmAVG);
   if((bpm>bpmRedAVG && bpm-bpmRedAVG > 2) || (bpm<bpmRedAVG && bpmRedAVG-bpm > 2)){
   //if(abs(bpm - avg(bpmAVG)) > 3){
-    infoTime = (long) (millis() + ANIMATION_TIME);
+    //infoTime = (long) (millis() + ANIMATION_TIME);
     flagInfo = BPM_ANIMATION;
   }
   bpm = bpmRedAVG;
@@ -112,7 +107,6 @@ void updateBPM_poti(){
     countsToInterrupt = (int) tmp;
     bpm_old = bpm;
   }
-  clk_state = CLK_OFF;
 }
 
 void trigger(){
@@ -243,15 +237,15 @@ void updateControls(){
   if(b[SYNC].fell()){
     playPointer = 0;
   }
-  if(b[RESET_CLK].fell()){
-    clk_state = 0;
+  if(b[TOGGLE_DISPLAY].fell()){
+    flagInfo = !flagInfo;
   }
   seqLengthAVG[seqLengthAVG_pointer] = (int) map(analogRead(PIN_SEQUENCE_LENGTH), 0, 1023, 1, 16);
   seqLengthAVG_pointer = ++seqLengthAVG_pointer % AVG_LENGTH;
   byte tmp_seqLen = (byte) avg(seqLengthAVG);
   if(sequenceLength != tmp_seqLen){
-    infoTime = (long) (millis() + ANIMATION_TIME);
-    flagInfo = SEQ_LENGTH_ANIMATION;
+    //infoTime = (long) (millis() + ANIMATION_TIME); // TODO: fliegt raus
+    flagInfo = SEQ_LENGTH_ANIMATION; 
   }
   sequenceLength = tmp_seqLen;
 
@@ -259,7 +253,7 @@ void updateControls(){
   dividerAVG_pointer = ++dividerAVG_pointer % AVG_LENGTH;
   byte tmp_divider = (byte) avg(dividerAVG); 
   if(divider != tmp_divider){
-    infoTime = (long) (millis() + ANIMATION_TIME);
+    //infoTime = (long) (millis() + ANIMATION_TIME);
     flagInfo = DIVIDER_ANIMATION;
   }  
   divider = (byte) tmp_divider;
@@ -274,7 +268,6 @@ void updateControls(){
 }
 
 void buildMatrix(){
-  //flagInfo = NORMAL_ANIMATION; // TODO: delete
   if(flagInfo == NORMAL_ANIMATION){
     int number = 0;
     matrix[7] = (byte) (sequence0 >> 8);
@@ -452,7 +445,6 @@ void printMatrix(){
 }
 
 void animateMatrix(){
-  //flagInfo = NORMAL_ANIMATION;
   if(flagInfo == NORMAL_ANIMATION){
     // animate sequence
     matrix[7-(playPointer / 8)] ^= (128*sequenceBlinker) >> (playPointer % 8);
@@ -484,9 +476,10 @@ void animateMatrix(){
         pickBlinker2 = 1;
       }
     }
-  } else if(infoTime < millis()){
-    flagInfo = NORMAL_ANIMATION;
-  }
+  // } else if(infoTime < millis()){
+  //   flagInfo = NORMAL_ANIMATION;
+  //   // TODO fliegt raus
+   }
 }
 
 void setup() {
@@ -505,7 +498,7 @@ void setup() {
   pinMode(PIN_CLK_OUT, OUTPUT);
   pinMode(PIN_32MODE, INPUT_PULLUP);
 
-  b[RESET_CLK].attach(PIN_RESET_CLK, INPUT_PULLUP);
+  b[TOGGLE_DISPLAY].attach(PIN_TOGGLE_DISPLAY, INPUT_PULLUP);
   b[SYNC].attach(PIN_SYNC, INPUT_PULLUP);
   b[PATTERN_MODE].attach(PIN_PATTERN, INPUT_PULLUP);
   b[PICK_DOT].attach(PIN_PICK_DOT, INPUT_PULLUP);

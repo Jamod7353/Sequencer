@@ -21,7 +21,7 @@
 #define PIN_TIMER_MODE 4    // Switch - Pullup
 #define PIN_PICK_DOT 11     // Button - Pullup
 #define PIN_SYNC 12        // Button - Pullup
-#define PIN_TOGGLE_DISPLAY A2    // Button - Pullup
+#define PIN_PICK_SEQUENCE A2    // Button - Pullup
 
 // Values
 int MIN_BPM = 58;

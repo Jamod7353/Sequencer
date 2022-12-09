@@ -5,11 +5,11 @@
 #include "patterns.h"
 
 // play and pick contol
-#define AVG_LENGTH 8
-byte sequenceLength = 15;
+#define AVG_LENGTH 12
+byte sequenceLength[4] = {16, 16, 16, 16};
 int seqLengthAVG[AVG_LENGTH];
 byte seqLengthAVG_pointer = 0;
-byte playPointer = 15;
+byte playPointer[3] = {15, 15, 15};
 byte pickPointer = 0;
 int pickPointerAVG[AVG_LENGTH];
 byte pickPointerAVG_pointer = 0;
@@ -29,7 +29,7 @@ int sequence2 = patterns[3];
 #define SYNC 0
 #define PATTERN_MODE 1
 #define PICK_DOT 2
-#define TOGGLE_DISPLAY 3 
+#define PICK_SEQUENCE 3 
 
 #define NUM_OF_BUTTONS 4
 
@@ -48,8 +48,9 @@ byte ANIMATION_NUM = 3;
 #define BPM_ANIMATION 1
 #define SEQ_LENGTH_ANIMATION 2
 #define DIVIDER_ANIMATION 3
+#define SEQ_PICK_ANIMATION 4
 byte flagInfo = 0;
-//long infoTime;
+long infoTime;
 
 // clock mode
 #define POTI_MODE 0
@@ -96,7 +97,7 @@ void updateBPM_poti(){
   int bpmRedAVG = avg(bpmAVG);
   if((bpm>bpmRedAVG && bpm-bpmRedAVG > 2) || (bpm<bpmRedAVG && bpmRedAVG-bpm > 2)){
   //if(abs(bpm - avg(bpmAVG)) > 3){
-    //infoTime = (long) (millis() + ANIMATION_TIME);
+    infoTime = (long) (millis() + ANIMATION_TIME);
     flagInfo = BPM_ANIMATION;
   }
   bpm = bpmRedAVG;
@@ -113,26 +114,28 @@ void trigger(){
   TCNT1 = diffToRelease;
   flagInterrupt = true;
   if(timer_mode == POTI_MODE || !clk_blocked){
-      playPointer = (playPointer+1) % sequenceLength;
+    for(int i=0; i<3; i++){
+      playPointer[i] = (playPointer[i]+1) % sequenceLength[i];
+    }  
   if(playPointer == 0){
     mode32_counter = (mode32_counter+1) % 2;
   }
     // trigger clk and signal if in sequence
     digitalWrite(PIN_CLK_OUT, HIGH);
-    if(sequence0 & (32768>>playPointer)){digitalWrite(PIN_OUT1, HIGH);}
+    if(sequence0 & (32768>>playPointer[0])){digitalWrite(PIN_OUT1, HIGH);}
 
     // in mode32 play seq1 and seq2 on both outputs
     if(mode32){
       if(mode32_counter == 0){
-        if(sequence1 & (32768>>playPointer)){digitalWrite(PIN_OUT2, HIGH);}
-        if(sequence1 & (32768>>playPointer)){digitalWrite(PIN_OUT3, HIGH);}
+        if(sequence1 & (32768>>playPointer[1])){digitalWrite(PIN_OUT2, HIGH);}
+        if(sequence1 & (32768>>playPointer[1])){digitalWrite(PIN_OUT3, HIGH);}
       } else {
-        if(sequence2 & (32768>>playPointer)){digitalWrite(PIN_OUT2, HIGH);}
-        if(sequence2 & (32768>>playPointer)){digitalWrite(PIN_OUT3, HIGH);}
+        if(sequence2 & (32768>>playPointer[2])){digitalWrite(PIN_OUT2, HIGH);}
+        if(sequence2 & (32768>>playPointer[2])){digitalWrite(PIN_OUT3, HIGH);}
       }
     } else {
-      if(sequence1 & (32768>>playPointer)){digitalWrite(PIN_OUT2, HIGH);}
-      if(sequence2 & (32768>>playPointer)){digitalWrite(PIN_OUT3, HIGH);}
+      if(sequence1 & (32768>>playPointer[1])){digitalWrite(PIN_OUT2, HIGH);}
+      if(sequence2 & (32768>>playPointer[2])){digitalWrite(PIN_OUT3, HIGH);}
     }
   }
 }
@@ -191,12 +194,9 @@ void updatePick(){
     }
     
   } else { // pick dot
-    //TODO: map 0 to 15 -> free Button to chose sequence
-    pickPointerAVG[pickPointerAVG_pointer] = (int) map(analogRead(PIN_PICK), 0, 1023, 0, 47);
+    pickPointerAVG[pickPointerAVG_pointer] = (int) map(analogRead(PIN_PICK), 0, 1023, 0, 15);
     pickPointerAVG_pointer = ++pickPointerAVG_pointer % AVG_LENGTH;
-    int value = avg(pickPointerAVG);
-    pickPointer = value % 16;
-    sequencePointer = value / 16;
+    pickPointer = avg(pickPointerAVG);
   }
 }
 
@@ -235,25 +235,36 @@ void updateControls(){
     setDot();
   }
   if(b[SYNC].fell()){
-    playPointer = 0;
+    for(int i=0; i<3; i++){
+      playPointer[i] = 0;
+    }
   }
-  if(b[TOGGLE_DISPLAY].fell()){
-    flagInfo = !flagInfo;
+  if(b[PICK_SEQUENCE].fell()){
+    sequencePointer = ++sequencePointer % 4;
+    infoTime = (long) (millis() + ANIMATION_TIME);
+    flagInfo = SEQ_PICK_ANIMATION; 
   }
   seqLengthAVG[seqLengthAVG_pointer] = (int) map(analogRead(PIN_SEQUENCE_LENGTH), 0, 1023, 1, 16);
   seqLengthAVG_pointer = ++seqLengthAVG_pointer % AVG_LENGTH;
   byte tmp_seqLen = (byte) avg(seqLengthAVG);
-  if(sequenceLength != tmp_seqLen){
-    //infoTime = (long) (millis() + ANIMATION_TIME); // TODO: fliegt raus
-    flagInfo = SEQ_LENGTH_ANIMATION; 
+
+  if(sequenceLength[sequencePointer] != tmp_seqLen){
+    infoTime = (long) (millis() + ANIMATION_TIME);
+    flagInfo = SEQ_LENGTH_ANIMATION;
+    if(sequencePointer == 3){ // if all seq selected -> change all
+      for(int i=0; i<4; i++){
+        sequenceLength[i] = tmp_seqLen;
+      }
+    } else { // change only selected
+      sequenceLength[sequencePointer] = tmp_seqLen;
+    }
   }
-  sequenceLength = tmp_seqLen;
 
   dividerAVG[dividerAVG_pointer] = (int) map(analogRead(PIN_DIVIDER), 0, 1023, 1, 8);
   dividerAVG_pointer = ++dividerAVG_pointer % AVG_LENGTH;
   byte tmp_divider = (byte) avg(dividerAVG); 
   if(divider != tmp_divider){
-    //infoTime = (long) (millis() + ANIMATION_TIME);
+    infoTime = (long) (millis() + ANIMATION_TIME);
     flagInfo = DIVIDER_ANIMATION;
   }  
   divider = (byte) tmp_divider;
@@ -295,10 +306,25 @@ void buildMatrix(){
         number = divider-4;
         divider_operator = 2;
       }
-      
     } else if(flagInfo == SEQ_LENGTH_ANIMATION){
-      number = sequenceLength;
+      number = sequenceLength[sequencePointer];
+    } else if(flagInfo == SEQ_PICK_ANIMATION){
+      if(sequencePointer == 3){
+        for(int i=0; i<8; i++){
+          matrix[i] = 255;
+        }
+        matrix[2] = 0;
+        matrix[5] = 0;
+      } else {
+        for(int i=0; i<8; i++){
+          matrix[i] = 0;
+        }
+        matrix[7-sequencePointer*3] = 255;
+        matrix[6-sequencePointer*3] = 255;
+      }
+      return;
     }
+
     for(int i=0; i<8; i++){
       matrix[i] = 0;
     }
@@ -447,17 +473,17 @@ void printMatrix(){
 void animateMatrix(){
   if(flagInfo == NORMAL_ANIMATION){
     // animate sequence
-    matrix[7-(playPointer / 8)] ^= (128*sequenceBlinker) >> (playPointer % 8);
+    matrix[7-(playPointer[0] / 8)] ^= (128*sequenceBlinker) >> (playPointer[0] % 8);
     
     if(mode32){
       if(mode32_counter == 0){
-        matrix[7-(playPointer / 8 + 3)] ^= (128*sequenceBlinker) >> (playPointer % 8);
+        matrix[7-(playPointer[1] / 8 + 3)] ^= (128*sequenceBlinker) >> (playPointer[1] % 8);
       } else {
-        matrix[7-(playPointer / 8 + 6)] ^= (128*sequenceBlinker) >> (playPointer % 8);
+        matrix[7-(playPointer[2] / 8 + 6)] ^= (128*sequenceBlinker) >> (playPointer[2] % 8);
       }
     } else {
-      matrix[7-(playPointer / 8 + 3)] ^= (128*sequenceBlinker) >> (playPointer % 8);
-      matrix[7-(playPointer / 8 + 6)] ^= (128*sequenceBlinker) >> (playPointer % 8);
+      matrix[7-(playPointer[1] / 8 + 3)] ^= (128*sequenceBlinker) >> (playPointer[1] % 8);
+      matrix[7-(playPointer[2] / 8 + 6)] ^= (128*sequenceBlinker) >> (playPointer[2] % 8);
     }
     sequenceBlinker ^= 1;
 
@@ -476,10 +502,9 @@ void animateMatrix(){
         pickBlinker2 = 1;
       }
     }
-  // } else if(infoTime < millis()){
-  //   flagInfo = NORMAL_ANIMATION;
-  //   // TODO fliegt raus
-   }
+  } else if(infoTime < millis()){
+    flagInfo = NORMAL_ANIMATION;
+  }
 }
 
 void setup() {
@@ -498,7 +523,7 @@ void setup() {
   pinMode(PIN_CLK_OUT, OUTPUT);
   pinMode(PIN_32MODE, INPUT_PULLUP);
 
-  b[TOGGLE_DISPLAY].attach(PIN_TOGGLE_DISPLAY, INPUT_PULLUP);
+  b[PICK_SEQUENCE].attach(PIN_PICK_SEQUENCE, INPUT_PULLUP);
   b[SYNC].attach(PIN_SYNC, INPUT_PULLUP);
   b[PATTERN_MODE].attach(PIN_PATTERN, INPUT_PULLUP);
   b[PICK_DOT].attach(PIN_PICK_DOT, INPUT_PULLUP);
